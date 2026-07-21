@@ -5,6 +5,7 @@ requireAuth();
 const grid = document.getElementById("grid");
 const msgBox = document.getElementById("msg");
 const userNameEl = document.getElementById("user-name");
+const userAvatarEl = document.getElementById("user-avatar");
 
 document.getElementById("logout-btn").addEventListener("click", () => {
   clearToken();
@@ -27,6 +28,13 @@ async function loadUser() {
   try {
     const user = await apiFetch("/api/users/me");
     userNameEl.textContent = user.name;
+
+    if (user.profilePictureUrl) {
+      userAvatarEl.src = user.profilePictureUrl;
+      userAvatarEl.hidden = false;
+    } else {
+      userAvatarEl.hidden = true;
+    }
   } catch (_) {
     // se falhar, o interceptor de 401 já redireciona; qualquer outro erro é silencioso aqui
   }

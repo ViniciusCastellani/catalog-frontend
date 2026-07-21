@@ -33,6 +33,59 @@ const pageCanvas = document.getElementById("page-canvas");
 const pageSpec = document.getElementById("page-spec");
 const propsPanel = document.getElementById("element-props");
 const statusLine = document.getElementById("status-line");
+const formatSelect = document.getElementById("page-format");
+const orientationBtns = document.querySelectorAll(".orientation-btn");
+const customSizeFields = document.getElementById("custom-size-fields");
+
+let currentOrientation = "portrait";
+
+// Tamanhos em pt (72pt = 1 polegada), sempre no sentido retrato.
+const PAGE_FORMATS = {
+  A4: { width: 595, height: 842 },
+  A3: { width: 842, height: 1191 },
+  A5: { width: 420, height: 595 },
+  LETTER: { width: 612, height: 792 },
+  LEGAL: { width: 612, height: 1008 },
+};
+
+function detectFormatFromSize(width, height) {
+  for (const [key, dims] of Object.entries(PAGE_FORMATS)) {
+    if (width === dims.width && height === dims.height) return { format: key, orientation: "portrait" };
+    if (width === dims.height && height === dims.width) return { format: key, orientation: "landscape" };
+  }
+  return { format: "CUSTOM", orientation: width >= height ? "landscape" : "portrait" };
+}
+
+function setOrientationUI(orientation) {
+  currentOrientation = orientation;
+  orientationBtns.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.orientation === orientation);
+  });
+}
+
+function applyFormatToInputs() {
+  const format = formatSelect.value;
+
+  if (format === "CUSTOM") {
+    customSizeFields.hidden = false;
+    return;
+  }
+
+  customSizeFields.hidden = true;
+  const dims = PAGE_FORMATS[format];
+  const isLandscape = currentOrientation === "landscape";
+  widthInput.value = isLandscape ? dims.height : dims.width;
+  heightInput.value = isLandscape ? dims.width : dims.height;
+}
+
+formatSelect.addEventListener("change", applyFormatToInputs);
+
+orientationBtns.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    setOrientationUI(btn.dataset.orientation);
+    applyFormatToInputs();
+  });
+});
 
 // URL da imagem de fundo pendente (ainda não salva) — null = sem imagem.
 let pendingBgImageUrl = null;
@@ -110,6 +163,11 @@ function applyCatalogueToForm() {
   bgColorInput.value = pageSettings.backgroundColor || "#ffffff";
   pendingBgImageUrl = pageSettings.backgroundImageUrl || null;
   renderBgPreview();
+
+  const { format, orientation } = detectFormatFromSize(pageSettings.width, pageSettings.height);
+  formatSelect.value = format;
+  setOrientationUI(orientation);
+  customSizeFields.hidden = format !== "CUSTOM";
 }
 
 function renderBgPreview() {
@@ -158,7 +216,10 @@ function renderPageFrame() {
   pageCanvas.style.backgroundImage = backgroundImageUrl ? `url("${backgroundImageUrl}")` : "none";
   pageCanvas.style.backgroundSize = "cover";
   pageCanvas.style.backgroundPosition = "center";
-  pageSpec.textContent = `${width} × ${height} pt`;
+
+  const { format, orientation } = detectFormatFromSize(width, height);
+  const formatLabel = format === "CUSTOM" ? "personalizado" : `${format} ${orientation === "landscape" ? "paisagem" : "retrato"}`;
+  pageSpec.textContent = `${width} × ${height} pt · ${formatLabel}`;
 }
 
 // ---------- salvar página / título ----------

@@ -22,7 +22,25 @@
         <label for="catalogue-title">Título do catálogo</label>
         <input type="text" id="catalogue-title" />
       </div>
-      <div class="field-inline">
+      <div class="field">
+        <label for="page-format">Formato da folha</label>
+        <select id="page-format">
+          <option value="A4">A4</option>
+          <option value="A3">A3</option>
+          <option value="A5">A5</option>
+          <option value="LETTER">Carta (Letter)</option>
+          <option value="LEGAL">Ofício (Legal)</option>
+          <option value="CUSTOM">Personalizado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Orientação</label>
+        <div class="orientation-toggle">
+          <button type="button" class="orientation-btn" data-orientation="portrait">Retrato</button>
+          <button type="button" class="orientation-btn" data-orientation="landscape">Paisagem</button>
+        </div>
+      </div>
+      <div class="field-inline" id="custom-size-fields" hidden>
         <div>
           <label for="page-width">Largura (pt)</label>
           <input type="number" id="page-width" min="1" />

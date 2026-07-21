@@ -1,4 +1,4 @@
-import { apiFetch, requireAuth, clearToken } from "./api.js";
+import { apiFetch, requireAuth, clearToken, uploadImage } from "./api.js";
 
 requireAuth();
 
@@ -9,16 +9,101 @@ document.getElementById("logout-btn").addEventListener("click", () => {
 
 const nameInput = document.getElementById("name");
 const emailInput = document.getElementById("email");
-const pictureInput = document.getElementById("profilePictureUrl");
 const profileMsg = document.getElementById("profile-msg");
 const passwordMsg = document.getElementById("password-msg");
+
+const userNameEl = document.getElementById("user-name");
+const userAvatarEl = document.getElementById("user-avatar");
+
+const avatarDropzone = document.getElementById("avatar-dropzone");
+const avatarFileInput = document.getElementById("avatar-file-input");
+const avatarPreview = document.getElementById("avatar-preview");
+const avatarPlaceholder = document.getElementById("avatar-placeholder");
+const avatarRemoveBtn = document.getElementById("avatar-remove-btn");
+
+let currentPictureUrl = null;
+
+function setAvatarPreview(url) {
+  currentPictureUrl = url || null;
+
+  if (currentPictureUrl) {
+    avatarPreview.src = currentPictureUrl;
+    avatarPreview.hidden = false;
+    avatarPlaceholder.hidden = true;
+    avatarRemoveBtn.hidden = false;
+  } else {
+    avatarPreview.hidden = true;
+    avatarPreview.removeAttribute("src");
+    avatarPlaceholder.hidden = false;
+    avatarRemoveBtn.hidden = true;
+  }
+
+  // mantém o badge do header em sincronia
+  if (currentPictureUrl) {
+    userAvatarEl.src = currentPictureUrl;
+    userAvatarEl.hidden = false;
+  } else {
+    userAvatarEl.hidden = true;
+  }
+}
+
+async function handleAvatarFile(file) {
+  if (!file || !file.type.startsWith("image/")) {
+    profileMsg.innerHTML = `<div class="msg msg-error">Escolha um arquivo de imagem válido.</div>`;
+    return;
+  }
+
+  avatarPlaceholder.textContent = "Enviando...";
+  try {
+    const { url } = await uploadImage(file);
+    setAvatarPreview(url);
+    profileMsg.innerHTML = "";
+  } catch (error) {
+    profileMsg.innerHTML = `<div class="msg msg-error">${error.message}</div>`;
+  } finally {
+    avatarPlaceholder.innerHTML = "Arraste uma imagem<br />ou clique";
+  }
+}
+
+avatarDropzone.addEventListener("click", () => avatarFileInput.click());
+avatarDropzone.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    event.preventDefault();
+    avatarFileInput.click();
+  }
+});
+
+avatarFileInput.addEventListener("change", () => {
+  const file = avatarFileInput.files[0];
+  avatarFileInput.value = ""; // permite selecionar o mesmo arquivo de novo depois
+  if (file) handleAvatarFile(file);
+});
+
+avatarDropzone.addEventListener("dragover", (event) => {
+  event.preventDefault();
+  avatarDropzone.classList.add("drag-over");
+});
+
+avatarDropzone.addEventListener("dragleave", () => {
+  avatarDropzone.classList.remove("drag-over");
+});
+
+avatarDropzone.addEventListener("drop", (event) => {
+  event.preventDefault();
+  avatarDropzone.classList.remove("drag-over");
+  const file = event.dataTransfer.files[0];
+  if (file) handleAvatarFile(file);
+});
+
+avatarRemoveBtn.addEventListener("click", () => setAvatarPreview(null));
 
 async function loadProfile() {
   try {
     const user = await apiFetch("/api/users/me");
     nameInput.value = user.name;
     emailInput.value = user.email;
-    pictureInput.value = user.profilePictureUrl || "";
+    userNameEl.textContent = user.name;
+    setAvatarPreview(user.profilePictureUrl || null);
   } catch (error) {
     profileMsg.innerHTML = `<div class="msg msg-error">${error.message}</div>`;
   }
@@ -33,9 +118,10 @@ document.getElementById("profile-form").addEventListener("submit", async (event)
       method: "PUT",
       body: {
         name: nameInput.value.trim(),
-        profilePictureUrl: pictureInput.value.trim() || null,
+        profilePictureUrl: currentPictureUrl,
       },
     });
+    userNameEl.textContent = nameInput.value.trim();
     profileMsg.innerHTML = `<div class="msg msg-success">Perfil atualizado.</div>`;
   } catch (error) {
     profileMsg.innerHTML = `<div class="msg msg-error">${error.message}</div>`;
