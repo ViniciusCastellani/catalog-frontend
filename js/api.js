@@ -1,10 +1,7 @@
-// Local: fala com a API rodando na sua máquina.
-// Produção (Vercel): fala com a API hospedada no Render.
-// Troque a URL do Render abaixo assim que você criar o serviço lá.
 const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 export const API_BASE_URL = isLocal
   ? "http://localhost:8080"
-  : "https://SEU-SERVICO.onrender.com";
+  : "https://catalog-api-xzbx.onrender.com";
 
 const TOKEN_KEY = "catalog_token";
 
@@ -20,22 +17,55 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+/**
+ * Decodifica o payload do JWT e verifica se já passou do `exp`.
+ * Não valida assinatura (isso é papel do backend) — só evita bater
+ * na API com um token que a gente já sabe que expirou.
+ */
+function isTokenExpired(token) {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    if (!payload.exp) return false;
+    return Date.now() >= payload.exp * 1000;
+  } catch (_) {
+    // token corrompido/ilegível: trata como expirado
+    return true;
+  }
+}
+
+/**
+ * Limpa a sessão e manda pra página inicial, travando a execução
+ * do resto do script (retorna uma Promise que nunca resolve) pra
+ * nenhuma tela de erro chegar a aparecer no meio do caminho.
+ */
+function redirectToHome() {
+  clearToken();
+  if (!window.location.pathname.endsWith("index.html") && window.location.pathname !== "/") {
+    window.location.href = "index.html";
+  }
+  return new Promise(() => {});
+}
+
 // Chame no topo de páginas que exigem login.
 export function requireAuth() {
-  if (!getToken()) {
-    window.location.href = "login.html";
+  const token = getToken();
+  if (!token || isTokenExpired(token)) {
+    clearToken();
+    window.location.href = "index.html";
     // location.href só agenda a navegação; sem isso, o resto do script
     // continuaria rodando (e fazendo chamadas sem token) até a página trocar.
-    throw new Error("Redirecionando para login.");
+    throw new Error("Redirecionando para a página inicial.");
   }
 }
 
 // Chame no topo de páginas de login/registro (não faz sentido logado).
 export function redirectIfAuthed() {
-  if (getToken()) {
+  const token = getToken();
+  if (token && !isTokenExpired(token)) {
     window.location.href = "dashboard.html";
     throw new Error("Redirecionando para dashboard.");
   }
+  if (token) clearToken(); // tinha token, mas tava expirado
 }
 
 async function parseErrorMessage(response) {
@@ -71,9 +101,7 @@ export async function uploadImage(file) {
   }
 
   if (response.status === 401) {
-    clearToken();
-    window.location.href = "login.html";
-    throw new Error("Sessão expirada.");
+    return redirectToHome();
   }
 
   if (!response.ok) {
@@ -110,17 +138,12 @@ export async function apiFetch(path, { method = "GET", body, auth = true } = {})
     });
   } catch (networkError) {
     throw new Error(
-      "Não consegui falar com o servidor. Confira se a API está rodando e se você já aceitou o certificado em " +
-        API_BASE_URL
+      "Não consegui falar com o servidor. Confira se a API está rodando em " + API_BASE_URL
     );
   }
 
   if (response.status === 401) {
-    clearToken();
-    if (!window.location.pathname.endsWith("login.html")) {
-      window.location.href = "login.html";
-    }
-    throw new Error("Sessão expirada. Faça login novamente.");
+    return redirectToHome();
   }
 
   if (!response.ok) {

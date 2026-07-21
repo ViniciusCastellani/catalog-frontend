@@ -1,39 +1,53 @@
 # Catalog Frontend
 
-Frontend em HTML/CSS/JS puro (sem build, sem framework) pro `catalog-api`.
+A frontend built with plain HTML, CSS, and JavaScript (no build tools or frameworks) for the `catalog-api`.
 
-## Como rodar local
+## Running Locally
 
-Não abre os arquivos direto no navegador (`file://`) — os módulos JS e o CORS da API não funcionam assim. Sirva por um servidor local, na porta 3000 (é o que está liberado em `CORS_ALLOWED_ORIGINS` no backend):
+Do **not** open the files directly in your browser using `file://`. JavaScript modules and the API's CORS configuration will not work that way.
+
+Serve the project through a local web server on port **3000** (the default origin allowed by `CORS_ALLOWED_ORIGINS` in the backend):
 
 ```bash
-# dentro da pasta catalog-frontend
+# Inside the catalog-frontend directory
 npx serve -l 3000
-# ou
+
+# or
 python3 -m http.server 3000
 ```
 
-Depois abre `http://localhost:3000`.
+Then open:
 
-## Antes de usar: aceitar o certificado da API
-
-A API roda em HTTPS com certificado autoassinado (`https://localhost:8080`). Antes de usar o frontend, abre `https://localhost:8080` direto no navegador uma vez, clica em "Avançado" → "Continuar mesmo assim" (ou equivalente). Sem isso, todo `fetch` do frontend pro backend falha silenciosamente por causa do certificado não confiável.
-
-## Configuração
-
-A URL da API está em `js/api.js`:
-
-```js
-export const API_BASE_URL = "https://localhost:8080";
+```
+http://localhost:3000
 ```
 
-Troca esse valor quando for hospedar o backend em outro lugar.
+## Configuration
 
-## Páginas
+The API URL is automatically resolved in `js/api.js` based on the host where the frontend is running:
 
-- `login.html` / `register.html` / `forgot-password.html` / `reset-password.html` — autenticação
-- `dashboard.html` — lista, cria e exclui catálogos
-- `editor.html?id=...` — editor com canvas: arrastar, redimensionar, editar texto (duplo clique) e imagem
-- `profile.html` — editar perfil, trocar senha, excluir conta
+```js
+const isLocal = ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
-O token JWT fica em `localStorage` (`catalog_token`).
+export const API_BASE_URL = isLocal
+  ? "http://localhost:8080"
+  : "https://YOUR_SERVICE.onrender.com";
+```
+
+- Running on `localhost` or `127.0.0.1` → connects to the local API at `http://localhost:8080`.
+- Running on any other domain (e.g., Vercel) → connects to the production API. **Replace `YOUR_SERVICE.onrender.com` with your actual backend URL once it has been deployed to Render (or another hosting provider).**
+
+Make sure the backend's `CORS_ALLOWED_ORIGINS` environment variable is configured to allow the domain where this frontend is hosted.
+
+## Pages
+
+- `login.html` / `register.html` / `forgot-password.html` / `reset-password.html` — Authentication
+- `dashboard.html` — List, create, and delete catalogs
+- `editor.html?id=...` — Canvas editor with drag-and-drop, resizing, text editing (double-click), and image support
+- `profile.html` — Edit profile, change password, and delete account
+
+## Authentication
+
+The JWT is stored in `localStorage` under the key `catalog_token` and is valid for **2 hours** (configured by the backend).
+
+When the token expires, any authenticated request receives a **401 Unauthorized** response from the API. The frontend automatically removes the token from `localStorage` and redirects the user to `login.html`.
