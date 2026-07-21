@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meus catálogos</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="app-header">
+    <a href="dashboard.html" class="brand">catalog<span>/</span>editor</a>
+    <nav class="app-nav">
+      <span id="user-name"></span>
+      <a href="profile.html">Perfil</a>
+      <button id="logout-btn">Sair</button>
+    </nav>
+  </header>
+
+  <main class="page-wrap">
+    <div class="page-head">
+      <div>
+        <p class="eyebrow">Espaço de trabalho</p>
+        <h1>Meus catálogos</h1>
+      </div>
+    </div>
+
+    <div id="msg"></div>
+    <div id="grid" class="catalogue-grid"></div>
+  </main>
+
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>
