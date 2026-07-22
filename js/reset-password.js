@@ -5,12 +5,14 @@ redirectIfAuthed();
 const form = document.getElementById("reset-form");
 const msgBox = document.getElementById("msg");
 const submitBtn = document.getElementById("submit-btn");
-const tokenInput = document.getElementById("token");
 
-// Se veio de forgot-password.html com ?token=..., já preenche.
+// O token vem só da URL do e-mail (?token=...), não é digitado pelo usuário.
 const params = new URLSearchParams(window.location.search);
-if (params.get("token")) {
-  tokenInput.value = params.get("token");
+const token = params.get("token");
+
+if (!token) {
+  msgBox.innerHTML = `<div class="msg msg-error">Link inválido ou incompleto. Solicite a recuperação de senha novamente.</div>`;
+  submitBtn.disabled = true;
 }
 
 form.addEventListener("submit", async (event) => {
@@ -33,7 +35,7 @@ form.addEventListener("submit", async (event) => {
       method: "POST",
       auth: false,
       body: {
-        token: tokenInput.value.trim(),
+        token,
         newPassword,
         confirmNewPassword,
       },
