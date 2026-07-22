@@ -4,7 +4,7 @@ requireAuth();
 
 document.getElementById("logout-btn").addEventListener("click", () => {
   clearToken();
-  window.location.href = "login.html";
+  window.location.href = "index.html";
 });
 
 const nameInput = document.getElementById("name");

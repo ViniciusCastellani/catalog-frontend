@@ -9,7 +9,7 @@ const userAvatarEl = document.getElementById("user-avatar");
 
 document.getElementById("logout-btn").addEventListener("click", () => {
   clearToken();
-  window.location.href = "login.html";
+  window.location.href = "index.html";
 });
 
 function escapeHtml(str) {
