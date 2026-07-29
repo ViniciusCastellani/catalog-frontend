@@ -285,7 +285,7 @@ function buildElementNode(id, el) {
     contentEl.className = "el-content";
     contentEl.contentEditable = "false";
     contentEl.textContent = el.content || "";
-    contentEl.style.color = el.textColor || "#FFFFFF";
+    contentEl.style.color = el.textColor || "#000000";
     contentEl.style.fontFamily = el.fontFamily || "serif";
     contentEl.style.fontSize = `${el.fontSize || 16}px`;
     contentEl.style.textShadow = buildTextStroke(el.textStrokeColor, el.textStrokeWidth);
@@ -513,7 +513,7 @@ function renderPropsPanel() {
           <div class="field-inline">
             <div>
               <label for="prop-text-color">Cor do texto</label>
-              <input type="color" id="prop-text-color" value="${el.textColor || "#FFFFFF"}" />
+              <input type="color" id="prop-text-color" value="${el.textColor || "#000000"}" />
             </div>
             <div>
               <label for="prop-font-size">Tamanho da fonte</label>
@@ -634,7 +634,7 @@ addTextBtn.addEventListener("click", () => {
     posY: 20,
     width: 160,
     height: 50,
-    textColor: "#FFFFFF",
+    textColor: "#000000",
     fontSize: 16,
   });
 });
@@ -657,17 +657,29 @@ imageFileInput.addEventListener("change", async () => {
 
 // ---------- arrastar imagem do computador direto pro canvas ----------
 
-pageCanvas.addEventListener("dragover", (event) => {
+let dragDepth = 0;
+
+pageCanvas.addEventListener("dragenter", (event) => {
   event.preventDefault();
+  dragDepth++;
   pageCanvas.classList.add("drag-over");
 });
 
+pageCanvas.addEventListener("dragover", (event) => {
+  // precisa do preventDefault aqui também, senão o navegador recusa o drop
+  event.preventDefault();
+});
+
 pageCanvas.addEventListener("dragleave", () => {
-  pageCanvas.classList.remove("drag-over");
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (dragDepth === 0) {
+    pageCanvas.classList.remove("drag-over");
+  }
 });
 
 pageCanvas.addEventListener("drop", async (event) => {
   event.preventDefault();
+  dragDepth = 0;
   pageCanvas.classList.remove("drag-over");
 
   const file = event.dataTransfer.files[0];
