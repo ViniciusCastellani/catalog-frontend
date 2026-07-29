@@ -26,19 +26,23 @@ form.addEventListener("submit", async (event) => {
   submitBtn.textContent = "Criando...";
 
   try {
+    const email = document.getElementById("email").value.trim();
+
     await apiFetch("/api/auth/register", {
       method: "POST",
       auth: false,
       body: {
         name: document.getElementById("name").value.trim(),
-        email: document.getElementById("email").value.trim(),
+        email,
         password,
         confirmPassword,
       },
     });
 
     showMessage("Conta criada! Redirecionando para o login...", "success");
-    setTimeout(() => (window.location.href = "login.html"), 1200);
+    setTimeout(() => {
+      window.location.href = `login.html?email=${encodeURIComponent(email)}`;
+    }, 1200);
   } catch (error) {
     showMessage(error.message);
     submitBtn.disabled = false;

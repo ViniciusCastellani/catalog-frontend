@@ -39,6 +39,27 @@ const customSizeFields = document.getElementById("custom-size-fields");
 
 let currentOrientation = "portrait";
 
+const PT_PER_CM = 72 / 2.54; // ≈ 28.3465
+
+const customWidthCm = document.getElementById("custom-width-cm");
+const customHeightCm = document.getElementById("custom-height-cm");
+
+function ptToCm(pt) {
+  return Math.round((pt / PT_PER_CM) * 10) / 10; // 1 casa decimal
+}
+
+function cmToPt(cm) {
+  return Math.round(cm * PT_PER_CM);
+}
+
+customWidthCm.addEventListener("input", () => {
+  widthInput.value = cmToPt(Number(customWidthCm.value) || 0);
+});
+
+customHeightCm.addEventListener("input", () => {
+  heightInput.value = cmToPt(Number(customHeightCm.value) || 0);
+});
+
 // Tamanhos em pt (72pt = 1 polegada), sempre no sentido retrato.
 const PAGE_FORMATS = {
   A4: { width: 595, height: 842 },
@@ -68,6 +89,8 @@ function applyFormatToInputs() {
 
   if (format === "CUSTOM") {
     customSizeFields.hidden = false;
+    customWidthCm.value = ptToCm(Number(widthInput.value) || PAGE_FORMATS.A4.width);
+    customHeightCm.value = ptToCm(Number(heightInput.value) || PAGE_FORMATS.A4.height);
     return;
   }
 
@@ -168,6 +191,10 @@ function applyCatalogueToForm() {
   formatSelect.value = format;
   setOrientationUI(orientation);
   customSizeFields.hidden = format !== "CUSTOM";
+  if (format === "CUSTOM") {
+    customWidthCm.value = ptToCm(pageSettings.width);
+    customHeightCm.value = ptToCm(pageSettings.height);
+  }
 }
 
 function renderBgPreview() {
@@ -219,7 +246,7 @@ function renderPageFrame() {
 
   const { format, orientation } = detectFormatFromSize(width, height);
   const formatLabel = format === "CUSTOM" ? "personalizado" : `${format} ${orientation === "landscape" ? "paisagem" : "retrato"}`;
-  pageSpec.textContent = `${width} × ${height} pt · ${formatLabel}`;
+  pageSpec.textContent = `${ptToCm(width)} × ${ptToCm(height)} cm · ${formatLabel}`;
 }
 
 // ---------- salvar página / título ----------

@@ -6,6 +6,15 @@ const form = document.getElementById("login-form");
 const msgBox = document.getElementById("msg");
 const submitBtn = document.getElementById("submit-btn");
 
+// Se veio do cadastro com ?email=..., já preenche o campo e manda o foco pra senha.
+const params = new URLSearchParams(window.location.search);
+const prefilledEmail = params.get("email");
+if (prefilledEmail) {
+  const emailInput = document.getElementById("email");
+  emailInput.value = prefilledEmail;
+  document.getElementById("password").focus();
+}
+
 function showMessage(text, type = "error") {
   msgBox.innerHTML = `<div class="msg msg-${type}">${text}</div>`;
 }
