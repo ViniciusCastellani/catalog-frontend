@@ -54,11 +54,13 @@ function cmToPt(cm) {
 }
 
 customWidthCm.addEventListener("input", () => {
+  if (formatSelect.value !== "CUSTOM") formatSelect.value = "CUSTOM";
   widthInput.value = cmToPt(Number(customWidthCm.value) || 0);
   applyPageSizeToCanvas(Number(widthInput.value), Number(heightInput.value));
 });
 
 customHeightCm.addEventListener("input", () => {
+  if (formatSelect.value !== "CUSTOM") formatSelect.value = "CUSTOM";
   heightInput.value = cmToPt(Number(customHeightCm.value) || 0);
   applyPageSizeToCanvas(Number(widthInput.value), Number(heightInput.value));
 });
@@ -100,9 +102,6 @@ function setOrientationUI(orientation) {
 function applyFormatToInputs() {
   const format = formatSelect.value;
   const isCustom = format === "CUSTOM";
-
-  customWidthCm.disabled = !isCustom;
-  customHeightCm.disabled = !isCustom;
 
   if (isCustom) {
     customWidthCm.value = ptToCm(Number(widthInput.value) || PAGE_FORMATS.A4.width);
@@ -213,9 +212,6 @@ function applyCatalogueToForm() {
   const { format, orientation } = detectFormatFromSize(width, height);
   formatSelect.value = format;
   setOrientationUI(orientation);
-  const isCustom = format === "CUSTOM";
-  customWidthCm.disabled = !isCustom;
-  customHeightCm.disabled = !isCustom;
   customWidthCm.value = ptToCm(width);
   customHeightCm.value = ptToCm(height);
 }
