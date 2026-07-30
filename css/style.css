@@ -729,3 +729,9 @@ hr.rule { border: none; border-top: 1px solid #3a4260; margin: 1rem 0; }
 @media (max-width: 480px) {
   .catalogue-grid { grid-template-columns: 1fr; }
 }
+/* Campos de largura/altura em cm quando o formato é um preset (não editáveis) */
+#custom-width-cm:disabled,
+#custom-height-cm:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}

@@ -35,7 +35,6 @@ const propsPanel = document.getElementById("element-props");
 const statusLine = document.getElementById("status-line");
 const formatSelect = document.getElementById("page-format");
 const orientationBtns = document.querySelectorAll(".orientation-btn");
-const customSizeFields = document.getElementById("custom-size-fields");
 
 let currentOrientation = "portrait";
 
@@ -45,7 +44,9 @@ const customWidthCm = document.getElementById("custom-width-cm");
 const customHeightCm = document.getElementById("custom-height-cm");
 
 function ptToCm(pt) {
-  return Math.round((pt / PT_PER_CM) * 10) / 10; // 1 casa decimal
+  const value = Number(pt);
+  if (!Number.isFinite(value)) return 0;
+  return Math.round((value / PT_PER_CM) * 10) / 10; // 1 casa decimal
 }
 
 function cmToPt(cm) {
@@ -54,10 +55,12 @@ function cmToPt(cm) {
 
 customWidthCm.addEventListener("input", () => {
   widthInput.value = cmToPt(Number(customWidthCm.value) || 0);
+  applyPageSizeToCanvas(Number(widthInput.value), Number(heightInput.value));
 });
 
 customHeightCm.addEventListener("input", () => {
   heightInput.value = cmToPt(Number(customHeightCm.value) || 0);
+  applyPageSizeToCanvas(Number(widthInput.value), Number(heightInput.value));
 });
 
 // Tamanhos em pt (72pt = 1 polegada), sempre no sentido retrato.
@@ -77,6 +80,16 @@ function detectFormatFromSize(width, height) {
   return { format: "CUSTOM", orientation: width >= height ? "landscape" : "portrait" };
 }
 
+// Atualiza só o tamanho visual da folha na tela, sem precisar salvar antes.
+function applyPageSizeToCanvas(width, height) {
+  pageCanvas.style.width = `${width}px`;
+  pageCanvas.style.height = `${height}px`;
+
+  const { format, orientation } = detectFormatFromSize(width, height);
+  const formatLabel = format === "CUSTOM" ? "personalizado" : `${format} ${orientation === "landscape" ? "paisagem" : "retrato"}`;
+  pageSpec.textContent = `${ptToCm(width)} × ${ptToCm(height)} cm · ${formatLabel}`;
+}
+
 function setOrientationUI(orientation) {
   currentOrientation = orientation;
   orientationBtns.forEach((btn) => {
@@ -86,19 +99,25 @@ function setOrientationUI(orientation) {
 
 function applyFormatToInputs() {
   const format = formatSelect.value;
+  const isCustom = format === "CUSTOM";
 
-  if (format === "CUSTOM") {
-    customSizeFields.hidden = false;
+  customWidthCm.disabled = !isCustom;
+  customHeightCm.disabled = !isCustom;
+
+  if (isCustom) {
     customWidthCm.value = ptToCm(Number(widthInput.value) || PAGE_FORMATS.A4.width);
     customHeightCm.value = ptToCm(Number(heightInput.value) || PAGE_FORMATS.A4.height);
+    applyPageSizeToCanvas(Number(widthInput.value), Number(heightInput.value));
     return;
   }
 
-  customSizeFields.hidden = true;
   const dims = PAGE_FORMATS[format];
   const isLandscape = currentOrientation === "landscape";
   widthInput.value = isLandscape ? dims.height : dims.width;
   heightInput.value = isLandscape ? dims.width : dims.height;
+  customWidthCm.value = ptToCm(Number(widthInput.value));
+  customHeightCm.value = ptToCm(Number(heightInput.value));
+  applyPageSizeToCanvas(Number(widthInput.value), Number(heightInput.value));
 }
 
 formatSelect.addEventListener("change", applyFormatToInputs);
@@ -181,20 +200,24 @@ function applyCatalogueToForm() {
   const { title, pageSettings } = state.catalogue;
   titleDisplay.textContent = title;
   titleInput.value = title;
-  widthInput.value = pageSettings.width;
-  heightInput.value = pageSettings.height;
+
+  const width = Number(pageSettings.width) || PAGE_FORMATS.A4.width;
+  const height = Number(pageSettings.height) || PAGE_FORMATS.A4.height;
+
+  widthInput.value = width;
+  heightInput.value = height;
   bgColorInput.value = pageSettings.backgroundColor || "#ffffff";
   pendingBgImageUrl = pageSettings.backgroundImageUrl || null;
   renderBgPreview();
 
-  const { format, orientation } = detectFormatFromSize(pageSettings.width, pageSettings.height);
+  const { format, orientation } = detectFormatFromSize(width, height);
   formatSelect.value = format;
   setOrientationUI(orientation);
-  customSizeFields.hidden = format !== "CUSTOM";
-  if (format === "CUSTOM") {
-    customWidthCm.value = ptToCm(pageSettings.width);
-    customHeightCm.value = ptToCm(pageSettings.height);
-  }
+  const isCustom = format === "CUSTOM";
+  customWidthCm.disabled = !isCustom;
+  customHeightCm.disabled = !isCustom;
+  customWidthCm.value = ptToCm(width);
+  customHeightCm.value = ptToCm(height);
 }
 
 function renderBgPreview() {
@@ -236,17 +259,14 @@ bgImageFileInput.addEventListener("change", async () => {
 });
 
 function renderPageFrame() {
-  const { width, height, backgroundColor, backgroundImageUrl } = state.catalogue.pageSettings;
-  pageCanvas.style.width = `${width}px`;
-  pageCanvas.style.height = `${height}px`;
+  const { backgroundColor, backgroundImageUrl } = state.catalogue.pageSettings;
+  const width = Number(state.catalogue.pageSettings.width) || PAGE_FORMATS.A4.width;
+  const height = Number(state.catalogue.pageSettings.height) || PAGE_FORMATS.A4.height;
+  applyPageSizeToCanvas(width, height);
   pageCanvas.style.backgroundColor = backgroundColor || "#ffffff";
   pageCanvas.style.backgroundImage = backgroundImageUrl ? `url("${backgroundImageUrl}")` : "none";
   pageCanvas.style.backgroundSize = "cover";
   pageCanvas.style.backgroundPosition = "center";
-
-  const { format, orientation } = detectFormatFromSize(width, height);
-  const formatLabel = format === "CUSTOM" ? "personalizado" : `${format} ${orientation === "landscape" ? "paisagem" : "retrato"}`;
-  pageSpec.textContent = `${ptToCm(width)} × ${ptToCm(height)} cm · ${formatLabel}`;
 }
 
 // ---------- salvar página / título ----------
