@@ -292,11 +292,18 @@ button {
 
 /* ---------- Editor ---------- */
 
+.editor-body {
+  height: 100dvh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .editor-shell {
   display: grid;
   grid-template-columns: 240px 1fr 260px;
-  height: calc(100vh - 56px); /* fallback para navegadores sem suporte a dvh */
-  height: calc(100dvh - 56px);
+  flex: 1;
+  min-height: 0; /* essencial pro grid não estourar dentro do flex */
 }
 
 .editor-panel {
@@ -482,7 +489,8 @@ button {
 hr.rule { border: none; border-top: 1px solid #3a4260; margin: 1rem 0; }
 
 @media (max-width: 900px) {
-  .editor-shell { grid-template-columns: 1fr; height: auto; }
+  .editor-body { height: auto; overflow: visible; }
+  .editor-shell { grid-template-columns: 1fr; flex: none; height: auto; }
   .canvas-viewport { order: -1; padding: 1.5rem; }
 }
 
