@@ -13,6 +13,8 @@ const state = {
   catalogueId,
   catalogue: null,
   selectedId: null,
+  requestSeq: 0, // contador global de requests de elemento, pra descartar respostas que cheguem fora de ordem
+  appliedSeq: 0,
 };
 
 // ---------- referências ----------
@@ -322,6 +324,7 @@ function buildElementNode(id, el) {
     img.crossOrigin = "anonymous";
     img.src = el.content || "";
     img.alt = "";
+    img.draggable = false; // evita o drag nativo do navegador brigando com o nosso drag customizado
     node.appendChild(img);
   } else {
     const contentEl = document.createElement("div");
@@ -448,7 +451,12 @@ function startDrag(event, node, id) {
     const newX = Number(node.dataset.pendingX ?? startLeft);
     const newY = Number(node.dataset.pendingY ?? startTop);
     if (newX !== startLeft || newY !== startTop) {
-      persistElement(id, { posX: newX, posY: newY });
+      // Atualiza o estado local JÁ, sem esperar o servidor responder — assim,
+      // se a pessoa arrastar de novo antes do save anterior voltar, o próximo
+      // arraste começa da posição certa (e não de uma posição antiga em cache).
+      el.posX = newX;
+      el.posY = newY;
+      persistElement(id, { posX: newX, posY: newY }, { skipRerender: true });
     }
   }
 
@@ -483,7 +491,9 @@ function startResize(event, node, id) {
     const newWidth = Number(node.dataset.pendingWidth ?? startWidth);
     const newHeight = Number(node.dataset.pendingHeight ?? startHeight);
     if (newWidth !== startWidth || newHeight !== startHeight) {
-      persistElement(id, { width: newWidth, height: newHeight });
+      el.width = newWidth;
+      el.height = newHeight;
+      persistElement(id, { width: newWidth, height: newHeight }, { skipRerender: true });
     }
   }
 
@@ -493,7 +503,7 @@ function startResize(event, node, id) {
 
 // ---------- persistir elemento (merge + PUT) ----------
 
-async function persistElement(id, partialUpdate) {
+async function persistElement(id, partialUpdate, options = {}) {
   const current = state.catalogue.catalogElements[id];
   if (!current) return;
 
@@ -512,16 +522,39 @@ async function persistElement(id, partialUpdate) {
     ...partialUpdate,
   };
 
+  // Marca esta chamada com um número sequencial. Se, enquanto ela está no ar,
+  // outra chamada mais nova terminar primeiro, a resposta desta aqui (mais
+  // antiga) é descartada quando finalmente chegar — evita que uma resposta
+  // atrasada (ex: Render acordando) sobrescreva um estado mais recente.
+  const mySeq = ++state.requestSeq;
+
   setStatus("Salvando...", "saving");
   try {
     const updated = await apiFetch(`/api/catalogues/${state.catalogueId}/elements/${id}`, {
       method: "PUT",
       body: payload,
     });
+
+    if (mySeq < state.appliedSeq) {
+      // já chegou algo mais novo antes desta resposta — ignora, pra não voltar no tempo
+      return;
+    }
+    state.appliedSeq = mySeq;
     state.catalogue = updated;
-    renderElements();
+
+    // Ao arrastar/redimensionar, o elemento na tela já está exatamente onde o
+    // mouse soltou — redesenhar o canvas inteiro de novo aqui só arrisca um
+    // "pulo" visual se essa resposta demorar ou chegar fora de ordem (ex: o
+    // servidor do Render acordando). Nesses casos só sincronizamos os dados.
+    if (options.skipRerender) {
+      renderPropsPanel();
+    } else {
+      renderElements();
+    }
     setStatus("Salvo.");
   } catch (error) {
+    if (mySeq < state.appliedSeq) return; // idem: erro atrasado de uma tentativa já superada
+    state.appliedSeq = mySeq;
     setStatus(error.message, "error");
     renderElements(); // reverte visual pro último estado confirmado
   }

@@ -422,6 +422,16 @@ button {
   font-size: 0.95rem;
   line-height: 1.35;
   padding: 4px 6px;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.el img {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+.el-content[contenteditable="true"] {
+  user-select: text;
+  cursor: text;
 }
 .el.el-image { overflow: hidden; }
 .el.el-text { overflow: visible; }
