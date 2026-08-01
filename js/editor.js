@@ -15,7 +15,11 @@ const state = {
   selectedId: null,
   requestSeq: 0, // contador global de requests de elemento, pra descartar respostas que cheguem fora de ordem
   appliedSeq: 0,
+  pendingSaves: {}, // id -> alterações ainda não salvas no banco
+  pendingTimers: {}, // id -> timeout do auto-save de 3s
 };
+
+const PENDING_SAVE_DELAY_MS = 3000;
 
 // ---------- referências ----------
 const titleDisplay = document.getElementById("catalogue-title-display");
@@ -270,6 +274,7 @@ function renderPageFrame() {
 // ---------- salvar página / título ----------
 
 savePageBtn.addEventListener("click", async () => {
+  await flushAllPendingSaves();
   setStatus("Salvando página...", "saving");
   try {
     const updated = await apiFetch(`/api/catalogues/${state.catalogueId}`, {
@@ -456,7 +461,7 @@ function startDrag(event, node, id) {
       // arraste começa da posição certa (e não de uma posição antiga em cache).
       el.posX = newX;
       el.posY = newY;
-      persistElement(id, { posX: newX, posY: newY }, { skipRerender: true });
+      scheduleElementSave(id, { posX: newX, posY: newY });
     }
   }
 
@@ -493,7 +498,7 @@ function startResize(event, node, id) {
     if (newWidth !== startWidth || newHeight !== startHeight) {
       el.width = newWidth;
       el.height = newHeight;
-      persistElement(id, { width: newWidth, height: newHeight }, { skipRerender: true });
+      scheduleElementSave(id, { width: newWidth, height: newHeight });
     }
   }
 
@@ -502,6 +507,38 @@ function startResize(event, node, id) {
 }
 
 // ---------- persistir elemento (merge + PUT) ----------
+
+// Em vez de salvar no banco a cada micro-movimento (o que causava o efeito de
+// "flick"), guardamos a alteração como pendente e só mandamos pro servidor
+// quando: (1) passam 3s sem mexer nesse elemento, (2) a pessoa aperta Ctrl+S,
+// ou (3) clica em "Aplicar"/"Salvar página". O elemento em si já fica
+// atualizado na tela e no estado local na hora — só o PUT é adiado.
+function scheduleElementSave(id, partialUpdate) {
+  state.pendingSaves[id] = { ...(state.pendingSaves[id] || {}), ...partialUpdate };
+  setStatus("Alterações pendentes... (salva sozinho em 3s, ou Ctrl+S)", "saving");
+
+  clearTimeout(state.pendingTimers[id]);
+  state.pendingTimers[id] = setTimeout(() => {
+    flushElementSave(id);
+  }, PENDING_SAVE_DELAY_MS);
+}
+
+async function flushElementSave(id) {
+  clearTimeout(state.pendingTimers[id]);
+  delete state.pendingTimers[id];
+
+  const pending = state.pendingSaves[id];
+  if (!pending) return;
+  delete state.pendingSaves[id];
+
+  await persistElement(id, pending, { skipRerender: true });
+}
+
+function flushAllPendingSaves() {
+  const ids = Object.keys(state.pendingSaves);
+  if (ids.length === 0) return Promise.resolve();
+  return Promise.all(ids.map((id) => flushElementSave(id)));
+}
 
 async function persistElement(id, partialUpdate, options = {}) {
   const current = state.catalogue.catalogElements[id];
@@ -643,6 +680,12 @@ function renderPropsPanel() {
   `;
 
   document.getElementById("prop-save-btn").addEventListener("click", async () => {
+    // "Aplicar" manda um update completo e imediato — cancela qualquer
+    // auto-save de 3s ainda pendente pra esse elemento, pra não duplicar.
+    clearTimeout(state.pendingTimers[id]);
+    delete state.pendingTimers[id];
+    delete state.pendingSaves[id];
+
     const posX = Number(document.getElementById("prop-x").value) || 0;
     const posY = Number(document.getElementById("prop-y").value) || 0;
     const width = Math.max(1, Number(document.getElementById("prop-w").value) || 1);
@@ -838,6 +881,24 @@ exportPdfBtn.addEventListener("click", async () => {
   }
 });
 
+// ---------- Ctrl+S / Cmd+S salva as alterações pendentes na hora ----------
+
+document.addEventListener("keydown", (event) => {
+  const isSaveShortcut = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s";
+  if (!isSaveShortcut) return;
+  event.preventDefault();
+  flushAllPendingSaves();
+});
+
+// Evita perder alterações não salvas se a pessoa fechar/recarregar a aba
+// enquanto ainda tem algo esperando os 3s do auto-save.
+window.addEventListener("beforeunload", (event) => {
+  if (Object.keys(state.pendingSaves).length > 0) {
+    event.preventDefault();
+    event.returnValue = "";
+  }
+});
+
 // ---------- deletar elemento selecionado com o teclado ----------
 
 document.addEventListener("keydown", async (event) => {
@@ -855,6 +916,10 @@ document.addEventListener("keydown", async (event) => {
 
   const id = state.selectedId;
   if (!confirm("Excluir este elemento?")) return;
+
+  clearTimeout(state.pendingTimers[id]);
+  delete state.pendingTimers[id];
+  delete state.pendingSaves[id];
 
   setStatus("Excluindo elemento...", "saving");
   try {
