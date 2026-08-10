@@ -456,12 +456,10 @@ function startDrag(event, node, id) {
     const newX = Number(node.dataset.pendingX ?? startLeft);
     const newY = Number(node.dataset.pendingY ?? startTop);
     if (newX !== startLeft || newY !== startTop) {
-      // Atualiza o estado local JÁ, sem esperar o servidor responder — assim,
-      // se a pessoa arrastar de novo antes do save anterior voltar, o próximo
-      // arraste começa da posição certa (e não de uma posição antiga em cache).
       el.posX = newX;
       el.posY = newY;
       scheduleElementSave(id, { posX: newX, posY: newY });
+      if (state.selectedId === id) renderPropsPanel();
     }
   }
 
@@ -499,6 +497,7 @@ function startResize(event, node, id) {
       el.width = newWidth;
       el.height = newHeight;
       scheduleElementSave(id, { width: newWidth, height: newHeight });
+      if (state.selectedId === id) renderPropsPanel();
     }
   }
 
